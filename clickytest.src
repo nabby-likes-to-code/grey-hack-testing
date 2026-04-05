@@ -1,0 +1,132 @@
+buttons_visuals = function(buttons, selected)
+    if selected >= buttons.len - 1 then
+        selected = buttons.len - 1
+    end if
+    if selected < 0 then
+        selected = 0
+    end if
+    for button in buttons
+        if selected == buttons.indexOf(button) then
+            print("<color=white>" + button + "</color>", true)
+        else
+            print(button, true)
+        end if
+    end for
+    return buttons[selected]
+end function
+
+config_editor = function
+    print("Config Editor opened!")
+    configuration = user_input("<voffset=-20>Press enter to confirm config...    Example config looks like: data=true,choice=string,law=10</voffset><pos=0>CONFIG FILE: ")
+    parsedConfig = config_parser(configuration)
+    configFile = get_shell.host_computer.File(home_dir + "/config.conf")
+    if configFile == null then exit("Could not get config file.")
+    config_saver(parsedConfig, configFile)
+end function
+
+config_saver = function(config, file)
+    return file.set_content(str(config))
+end function
+config_loader = function(file)
+    config = file.get_content()
+    return config
+end function
+
+config_parser = function(configData, type)
+    if type == "load" then
+        // configData looks like: {"data": 1, "test": "string"}
+
+        // trim whitespace
+        configData = configData.trim()
+
+        // remove outer { }
+        if configData[0] == "{" and configData[configData.len - 1] == "}" then
+            configData = configData[1:configData.len - 1]
+        end if
+
+        config = {}
+        pairs = configData.split(",")
+
+        for pair in pairs
+            kv = pair.split(":")
+
+            key = kv[0].trim()
+            value = kv[1].trim()
+
+            // remove quotes from key: "data" -> data
+            if key[0] == """" and key[key.len - 1] == """" then
+                key = key[1:key.len - 1]
+            end if
+
+            // handle string values: "string" -> string
+            if value.len > 1 and value[0] == """" and value[value.len - 1] == """" then
+                value = value[1:value.len - 1]
+            else if value == "true" then
+                value = 1
+            else if value == "false" then
+                value = 0
+            else
+                value = value.to_int()
+            end if
+
+            config[key] = value
+        end for
+
+        return config
+    end if
+
+    // save mode (your original logic)
+    config = {}
+    configParts = configData.split(",")
+    for part in configParts
+        splitPart = part.split("=")
+        splitPart[1] = splitPart[1].to_int()
+        if splitPart[1] == "true" then 
+            splitPart[1] = 1
+        else if splitPart[1] == "false" then 
+            splitPart[1] = 0
+        end if
+        config[splitPart[0]] = splitPart[1]
+    end for
+    return config
+end function
+
+
+
+config_getter = function
+    configFile = get_shell.host_computer.File(home_dir+"/config.conf")
+    config = config_loader(configFile)
+    parsedConfig = config_parser(config, "load")
+    print parsedConfig
+    wait(300)
+end function
+
+commandler = function(command)
+    if command == "write-config" then
+        return config_editor()
+    end if
+    if command == "load-config" then
+        return config_getter()
+    end if
+    if command == "exit" then exit()
+end function
+
+i = 0
+while true
+    buttons = ["write-config","load-config","exit"]
+    selected = buttons_visuals(buttons, i)
+    input = user_input("",false,true, false)
+    if input == "UpArrow" then
+        i = i - 1
+        if i < 0 then i = i + 1
+        wait(0.3)
+    end if
+    if input == "DownArrow" then
+        i = i + 1
+        if i > buttons.len - 1 then i = i - 1
+        wait(0.3)
+    end if
+    if input == "LeftControl" then
+        commandler(selected)
+    end if
+end while
